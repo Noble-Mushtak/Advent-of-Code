@@ -120,14 +120,30 @@ updateHull (curDir, curLoc, curMap) (color, direction) =
 
 finalHull :: Hull
 finalHull =
-  let allHulls = L.scanl' updateHull (UP, (0, 0), M.empty) $
+  let allHulls = L.scanl' updateHull (UP, (0, 0), M.singleton (0, 0) 1) $
                     curryList outputs
       inputs = map colorUnderPanel allHulls
       outputs = runProgram program inputs
   in last allHulls
 
-numPainted :: Hull -> Int
-numPainted (_, _, curMap) = M.size curMap
+drawHull :: Hull -> [String]
+drawHull (_, _, curMap) =
+  map drawRow [maxY,(maxY-1)..minY]
+  where panels = M.assocs curMap
+        allXs = map (fst . fst) panels
+        allYs = map (snd . fst) panels
+        minX = minimum allXs
+        minY = minimum allYs
+        maxX = maximum allXs
+        maxY = maximum allYs
+        
+        drawRow curY = map (drawPanel curY) [minX..maxX]
+  
+        drawPanel curY curX =
+          case (M.findWithDefault 0 (curX, curY) curMap) of
+            1 -> '#'
+            0 -> '.'
+            _ -> error "Unknown panel color"
 
 main :: IO ()
-main = print $ numPainted finalHull
+main = putStrLn $ L.intercalate "\n" $ drawHull finalHull

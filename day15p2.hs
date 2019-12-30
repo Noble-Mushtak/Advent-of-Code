@@ -144,8 +144,5 @@ shortestPathToOxygen = head $
 fromOxygenState :: PathState
 fromOxygenState = ([], snd shortestPathToOxygen)
 
-isValidCell :: CellType -> Bool
-isValidCell = (||) <$> (== Space) <*> (== Oxygen)
-
 main :: IO ()
-main = print $ maximum $ map (length . fst) $ findAllPaths isValidCell fromOxygenState
+main = print $ maximum $ map (length . fst) $ findAllPaths (/=Wall) fromOxygenState

@@ -1,8 +1,6 @@
 import qualified Data.Array as A
 import qualified Control.Monad.Writer.Lazy as W
 import Control.Applicative
-import Control.Monad
-import Debug.Trace
 
 -- In case we need to switch Output to arbitrary-precision Integer later
 type Output = Int
@@ -54,7 +52,7 @@ contProgram inputs state@(ProgState relBase curLoc prog) =
                       contProgram rst $ ProgState relBase (curLoc+2) $
                          prog A.// [((readLoc mode1 (curLoc+1)), input)]
                            
-             4 -> (W.tell $ [readElem mode1 (curLoc+1)]) >>
+             4 -> (W.tell [readElem mode1 (curLoc+1)]) >>
                     runP (curLoc+2) prog
                     
              5 -> if ((readElem mode1 (curLoc+1)) == 0)
@@ -119,10 +117,20 @@ maybeLast :: [a] -> Maybe a
 maybeLast (fstElem:_) = Just fstElem
 maybeLast []          = Nothing
 
-updateStates :: ([ProgWriter], NAT) -> ([ProgWriter], NAT)
-updateStates (curStates, curNat) =
-  (zipWith updateState curStates newInputs, newNat)
-  where allPackets = curStates >>= (parseOutput . W.execWriter)
+data NetworkState = NetworkState { getProgStates :: [ProgWriter], getNat :: NAT, getIdleCount :: Int } deriving (Show)
+
+initialNetworkState :: NetworkState
+initialNetworkState = NetworkState initialStates Nothing 0
+
+idleThreshold :: Int
+idleThreshold = 10
+
+updateStates :: NetworkState -> NetworkState
+updateStates (NetworkState curProgStates curNat idleCount) =
+  NetworkState (zipWith updateState curProgStates newInputs)
+               newNat
+               newIdleCount
+  where allPackets = curProgStates >>= (parseOutput . W.execWriter)
   
         packetMatches stateId (Packet address _ _) = stateId == address
         
@@ -132,40 +140,52 @@ updateStates (curStates, curNat) =
         updateDefaultInput [] = [-1]
         updateDefaultInput lst = lst
         
-        (newInputs, newNat) =
+        (newInputs, newNat, newIdleCount) =
           case allPackets of
-            [] -> --traceShow "HI" $
-                  (case curNat of
-                     Nothing     -> repeat [-1]
-                     Just (x, y) -> [x, y] : repeat [-1],
-                   Nothing)
+            []
+              | idleCount >= idleThreshold ->
+                (case curNat of
+                   Nothing     -> repeat [-1]
+                   Just (x, y) -> --traceShow (x, y) $
+                                  [x, y] : repeat [-1],
+                 Nothing,
+                 0)
+              | otherwise -> (repeat [-1], curNat, idleCount+1)
                    
-            _  -> --traceShow "HELLO" $
-                  let packetsTo255 =
+            _  -> let packetsTo255 =
                         flip filter allPackets $ packetMatches 255
                       possibleNewNat = packetToNat <$> maybeLast packetsTo255 in
                   (map (updateDefaultInput .
                          (>>= packetToInput) .
                            flip filter allPackets . packetMatches)
                        [0..49],
-                   possibleNewNat <|> curNat)
+                   possibleNewNat <|> curNat,
+                   0)
 
-        updateState curState newInput = curState >>= contProgram newInput
-        
+        updateState curProgState newInput =
+          (W.censor (const []) curProgState) >>= contProgram newInput
+
+detectPacketsSentByNat :: [NetworkState] -> [(Int, Int)]
+detectPacketsSentByNat ((NetworkState _ natSent idle1):
+                        rstLst@((NetworkState _ _ idle2):_))
+  | (idle1 == idleThreshold) && (idle2 == 0) =
+    case natSent of
+      Nothing     -> rstPackets
+      Just (x, y) -> (x, y) : rstPackets
+  | otherwise     = rstPackets
+  where rstPackets = detectPacketsSentByNat rstLst
+
+detectPacketsSentByNat _ = []
+
+findFirstRepeat :: (Eq a) => [a] -> Maybe a
+findFirstRepeat (a:rstLst@(b:_))
+  | a == b    = Just a
+  | otherwise = findFirstRepeat rstLst
+findFirstRepeat _ = Nothing
+
 main :: IO ()
-
 main = do
-  let nats = map snd $ iterate updateStates (initialStates, Nothing)
-  --forM_ (filter (== Nothing) nats) print
-  forM_ nats print
----}  
-
-{-
-main = do
-  let packets = do
-        (statesList, _) <- iterate updateStates (initialStates, Nothing)
-        state <- statesList
-        parseOutput $ W.execWriter state
-      packetsTo255 = filter ((== 255) . getAddress) packets
-  forM_ packets print
----}
+  let packetsFromNat =
+        detectPacketsSentByNat $ iterate updateStates initialNetworkState
+      yCoords = map snd packetsFromNat
+  print $ findFirstRepeat yCoords

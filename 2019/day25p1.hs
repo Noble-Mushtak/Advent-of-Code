@@ -9,7 +9,7 @@ rawProgram = [109,4822,21102,3124,1,1,21101,13,0,0,1106,0,1424,21102,1,166,1,211
 type Program = A.Array Int Int
 
 program :: Program
-program = A.listArray (0, 5000) (rawProgram ++ (repeat 0))
+program = A.listArray (0, 10000) (rawProgram ++ (repeat 0))
 
 data Mode = Position | Immediate | Relative deriving (Enum)
 

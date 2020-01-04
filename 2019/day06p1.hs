@@ -20,4 +20,4 @@ calcAllReachables edgeList = M.map calcReachable edgeList
               S.elems neighbors
 
 main :: IO ()
-main = interact (show . M.foldr (+) 0 . calcAllReachables . buildMap . parseInput)
+main = interact ((++"\n") . show . M.foldr (+) 0 . calcAllReachables . buildMap . parseInput)

@@ -68,4 +68,4 @@ calcAnswer input =
   show $ vaporizationOrder !! 199
 
 main :: IO ()
-main = interact calcAnswer
+main = interact ((++"\n") . calcAnswer)

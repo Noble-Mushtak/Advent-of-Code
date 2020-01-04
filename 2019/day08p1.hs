@@ -9,5 +9,8 @@ countElem x = length . filter (== x)
 getInfo :: String -> (Int, Int, Int)
 getInfo = (,,) <$> countElem '0' <*> countElem '1' <*> countElem '2'
 
+calcAnswer :: (Int, Int, Int) -> Int
+calcAnswer (_, num1s, num2s) = num1s*num2s
+
 main :: IO ()
-main = interact (show . minimum . map getInfo . chunksOf layerLength)
+main = interact ((++"\n") . show . calcAnswer . minimum . map getInfo . chunksOf layerLength)

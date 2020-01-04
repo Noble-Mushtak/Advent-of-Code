@@ -16,5 +16,10 @@ updateLayer origLayer newLayer = zipWith (<|>) origLayer $ map wrapChar newLayer
   where wrapChar '2' = Nothing
         wrapChar ch  = Just ch
 
+makeReadable :: Char -> Char
+makeReadable '0' = '.'
+makeReadable '1' = '#'
+makeReadable ch  = ch
+
 main :: IO ()
-main = interact (L.intercalate "\n" . chunksOf 25 . map (fromMaybe '2') . foldl updateLayer defaultLayer . chunksOf layerLength)
+main = interact ((++"\n") . map makeReadable . L.intercalate "\n" . chunksOf 25 . map (fromMaybe '2') . foldl updateLayer defaultLayer . chunksOf layerLength)

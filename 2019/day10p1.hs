@@ -32,4 +32,4 @@ maxNumCanBeSeen allAsteroids =
   S.foldr (max . (numCanBeSeen allAsteroids)) 0 allAsteroids
 
 main :: IO ()
-main = interact $ (show . maxNumCanBeSeen . calcLocations . lines)
+main = interact $ ((++"\n") . show . maxNumCanBeSeen . calcLocations . lines)

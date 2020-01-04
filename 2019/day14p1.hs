@@ -87,4 +87,4 @@ buildMaterialsTable =
     <*> (calcProcessingOrder . buildGraph)
 
 main :: IO ()
-main = interact (show . buildMaterialsTable . parseInput)
+main = interact ((++"\n") . show . buildMaterialsTable . parseInput)

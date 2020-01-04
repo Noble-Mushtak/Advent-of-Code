@@ -29,4 +29,4 @@ calcDistance edgeList visited end start
                                  M.findWithDefault S.empty start edgeList
 
 main :: IO ()
-main = interact (show . (\m -> calcDistance m S.empty sanOrbit youOrbit) . buildMap . parseInput)
+main = interact ((++"\n") . show . (\m -> calcDistance m S.empty sanOrbit youOrbit) . buildMap . parseInput)

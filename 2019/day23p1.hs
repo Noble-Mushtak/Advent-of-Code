@@ -125,4 +125,4 @@ main = do
         state <- statesList
         parseOutput $ W.execWriter state
       packetsTo255 = filter ((== 255) . getAddress) packets
-  print $ head packetsTo255
+  print $ getY $ head packetsTo255

@@ -105,4 +105,4 @@ findMaxPossible :: Int -> (Int -> Int) -> Int
 findMaxPossible = findMaxPossible' 1 oneTrillion
 
 main :: IO ()
-main = interact (show . findMaxPossible oneTrillion . calcOreNeeded . parseInput)
+main = interact ((++"\n") . show . findMaxPossible oneTrillion . calcOreNeeded . parseInput)

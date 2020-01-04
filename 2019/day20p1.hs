@@ -5,7 +5,7 @@ import qualified Deque.Lazy as D
 import qualified Data.Set as S
 import GHC.Exts
 import Data.Maybe
-import Debug.Trace
+--import Debug.Trace
 
 compose2 :: (c -> d) -> (a -> b -> c) -> (a -> b -> d)
 compose2 f g a b = f $ g a b
@@ -102,7 +102,7 @@ calcAnswer grid portalMap = calcAnswer' S.empty $ fromList [(0, initialState)]
               | S.member curLoc visitedLocs ->
                 calcAnswer' visitedLocs rstQueue
               | otherwise ->
-                traceShow (curSteps, curCell, curLoc) $
+                --traceShow (curSteps, curCell, curLoc) $
                 let newVisited = S.insert curLoc visitedLocs in
                 case curCell of
                   InPortal "ZZ" -> Just curSteps
@@ -136,4 +136,4 @@ calcAnswer grid portalMap = calcAnswer' S.empty $ fromList [(0, initialState)]
                   Wall -> error "Reached wall"
 
 main :: IO ()
-main = interact (show . (flip calcAnswer =<< findPortals) . createGrid . toArray . map toArray . lines)
+main = interact ((++"\n") . show . (flip calcAnswer =<< findPortals) . createGrid . toArray . map toArray . lines)

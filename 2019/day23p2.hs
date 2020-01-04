@@ -2,6 +2,7 @@ import qualified Data.Array as A
 import qualified Control.Monad.Writer.Lazy as W
 import Control.Applicative
 import Data.Maybe
+import Debug.Trace
 
 -- This type represents a number which represents an input to, an instruction from, or an output from an Intcode program.
 -- This is a separate type in case we need to switch ProgUnit to arbitrary-precision Integer later
@@ -206,7 +207,8 @@ updateNetwork (NetworkState curProgStates curNat idleCount) =
                 (-- If the NAT object is not Nothing, then send the appropriate x and y coordinates to address 0 and send a -1 to all of the other computers:
                  case curNat of
                    Nothing     -> repeat [-1]
-                   Just packet -> packetToInput packet : repeat [-1],
+                   Just packet -> traceShow packet $
+                                  packetToInput packet : repeat [-1],
                  curNat,
                  -- Also, since a packet from the NAT has been sent, reset the idle count to 0:
                  0)
@@ -225,15 +227,15 @@ updateNetwork (NetworkState curProgStates curNat idleCount) =
                    -- To update the NAT object, first, find all of the packets which match address 255.
                    let packetsTo255 =
                          flip filter allPackets $ packetMatches 255
-                       -- listToMaybe (reverse packetsTo255) will return the last packet sent to address 255 if there is one, and Nothing otherwise.
-                       possibleNewNat = listToMaybe (reverse packetsTo255) in
+                       -- listToMaybe $ reverse packetsTo255 will return the last packet sent to address 255 if there is one, and Nothing otherwise.
+                       possibleNewNat = listToMaybe $ reverse packetsTo255 in
                      -- Here, the <|> function will return possibleNewNat if it is not Nothing (i.e. if there was a new packet sent to address 255), and will return curNat if possibleNewNat is Nothing (i.e. keep the current NAT object if no packet was sent to address 255 in this cycle
                      possibleNewNat <|> curNat,
                    -- Since the network is not idle, reset the idle count:
                    0)
 
         -- Given the current program state and a list of ProgUnits representing packets sent to this computer,
-        -- updateState clears the output of the current computer and then pipes the current program state into contProgram in order to update the program state with the new input and and get any new output of the program
+        -- updateState clears the output of the current computer and then pipes the current program state into contProgram in order to update the program state with the new input and get any new output of the program.
         updateState curProgState newInput =
           (W.censor (const []) curProgState) >>= contProgram newInput
 

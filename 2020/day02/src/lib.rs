@@ -16,13 +16,13 @@ struct PasswordPolicy {
 #[derive(PartialEq, Debug, Snafu)]
 enum ParsePolicyError {
     #[snafu(display("\"{}\" could not be parsed", line))]
-    ParseLineError { line: String },
+    Line { line: String },
     #[snafu(display("The needed char in \"{}\" could not be parsed", line))]
-    ParseCharError { line: String },
+    Char { line: String },
     #[snafu(display("The minimum number in \"{}\" could not be parsed", line))]
-    ParseMinError { line: String },
+    Min { line: String },
     #[snafu(display("The maximum number in \"{}\" could not be parsed", line))]
-    ParseMaxError { line: String },
+    Max { line: String },
 }
 
 impl FromStr for PasswordPolicy {
@@ -31,19 +31,19 @@ impl FromStr for PasswordPolicy {
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         use ParsePolicyError::*;
         
-        let (min_str, rest) = input.split_once("-").ok_or(ParseLineError { line: input.to_string() })?;
-        let (max_str, rest) = rest.split_once(" ").ok_or(ParseLineError { line: input.to_string() })?;
-        let (needed_char_str, password) = rest.split_once(": ").ok_or(ParseLineError { line: input.to_string() })?;
+        let (min_str, rest) = input.split_once("-").ok_or(Line { line: input.to_string() })?;
+        let (max_str, rest) = rest.split_once(" ").ok_or(Line { line: input.to_string() })?;
+        let (needed_char_str, password) = rest.split_once(": ").ok_or(Line { line: input.to_string() })?;
         let mut needed_char_iter = needed_char_str.chars();
-        let needed_char = needed_char_iter.next().ok_or(ParseCharError{ line: input.to_string() })?;
+        let needed_char = needed_char_iter.next().ok_or(Char{ line: input.to_string() })?;
         match needed_char_iter.next() {
             None => (),
-            Some(_) => Err(ParseCharError { line: input.to_string() })?
+            Some(_) => { return Err(Char { line: input.to_string() }); }
         };
         Ok(PasswordPolicy {
-            min_occurs: min_str.parse().map_err(|_| ParseMinError { line: input.to_string() })?,
-            max_occurs: max_str.parse().map_err(|_| ParseMaxError { line: input.to_string() })?,
-            needed_char: needed_char,
+            min_occurs: min_str.parse().map_err(|_| Min { line: input.to_string() })?,
+            max_occurs: max_str.parse().map_err(|_| Max { line: input.to_string() })?,
+            needed_char,
             password: password.to_string(),
         })
     }
@@ -58,7 +58,7 @@ impl FromStr for PasswordPolicies {
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         Ok(PasswordPolicies(
             input.trim()
-                 .split("\n")
+                 .split('\n')
                  .map(|line| line.parse())
                  .collect::<Result<_, _>>()?
         ))
@@ -79,7 +79,7 @@ fn valid_policy2(policy: &PasswordPolicy) -> bool {
 fn calc_answer<F>(policies: &PasswordPolicies, valid_policy: F) -> usize
     where F: Fn(&PasswordPolicy) -> bool {
     policies.0.iter()
-              .map(|policy| -> usize { valid_policy(&policy).into() })
+              .map(|policy| valid_policy(&policy) as usize)
               .sum()
 }
 
@@ -107,17 +107,17 @@ mod tests {
         use ParsePolicyError::*;
 
         let query = "2-9 cernui".to_string();
-        assert_eq!(query.parse::<PasswordPolicy>(), Err(ParseLineError { line: query }));
+        assert_eq!(query.parse::<PasswordPolicy>(), Err(Line { line: query }));
         let query = "dsf rf9gv8 cernui".to_string();
-        assert_eq!(query.parse::<PasswordPolicy>(), Err(ParseLineError { line: query }));
+        assert_eq!(query.parse::<PasswordPolicy>(), Err(Line { line: query }));
         let query = "10-9 : sdugu".to_string();
-        assert_eq!(query.parse::<PasswordPolicy>(), Err(ParseCharError { line: query }));
+        assert_eq!(query.parse::<PasswordPolicy>(), Err(Char { line: query }));
         let query = "10-9 fdiuh: sdugu".to_string();
-        assert_eq!(query.parse::<PasswordPolicy>(), Err(ParseCharError { line: query }));
+        assert_eq!(query.parse::<PasswordPolicy>(), Err(Char { line: query }));
         let query = "c-9 d: sdugu".to_string();
-        assert_eq!(query.parse::<PasswordPolicy>(), Err(ParseMinError { line: query }));
+        assert_eq!(query.parse::<PasswordPolicy>(), Err(Min { line: query }));
         let query = "10-9djfh d: sdugu".to_string();
-        assert_eq!(query.parse::<PasswordPolicy>(), Err(ParseMaxError { line: query }));
+        assert_eq!(query.parse::<PasswordPolicy>(), Err(Max { line: query }));
         assert_eq!("1-3 a: abcde".parse(), Ok(PasswordPolicy { min_occurs: 1, max_occurs: 3, needed_char: 'a', password: "abcde".to_string() }));
         assert_eq!("2-9 c: cccccccc".parse(), Ok(PasswordPolicy { min_occurs: 2, max_occurs: 9, needed_char: 'c', password: "cccccccc".to_string() }));
     }

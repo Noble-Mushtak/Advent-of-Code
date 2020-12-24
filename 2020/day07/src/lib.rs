@@ -157,7 +157,7 @@ impl ColorGraph {
         let mut queue = VecDeque::new();
         queue.push_back(color.clone());
         while let Some(cur_color) = queue.pop_front() {
-            for quantity in self.0.get(&cur_color).unwrap_or(&vec![]) {
+            for quantity in self.0.get(&cur_color).iter().copied().flatten() {
                 if !reachable_colors.contains(&quantity.color) {
                     queue.push_back(quantity.color.clone());
                 }
@@ -170,8 +170,9 @@ impl ColorGraph {
     fn bags_containing(&self, color: &Color) -> usize {
         self.0
             .get(&color)
-            .unwrap_or(&vec![])
             .iter()
+            .copied()
+            .flatten()
             .map(|quantity| quantity.quantity * (1 + self.bags_containing(&quantity.color)))
             .sum()
     }

@@ -72,13 +72,11 @@ impl FromStr for PasswordPolicies {
     type Err = ParsePolicyError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        Ok(PasswordPolicies(
-            input
-                .trim()
-                .split('\n')
-                .map(|line| line.parse())
-                .collect::<Result<_, _>>()?,
-        ))
+        input
+            .lines()
+            .map(|line| line.parse())
+            .collect::<Result<_, _>>()
+            .map(PasswordPolicies)
     }
 }
 

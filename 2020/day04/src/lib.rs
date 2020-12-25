@@ -108,13 +108,12 @@ impl FromStr for PassportBatch {
     type Err = ParsePassportError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        Ok(PassportBatch(
-            input
-                .trim()
-                .split("\n\n")
-                .map(str::parse)
-                .collect::<Result<_, _>>()?,
-        ))
+        input
+            .trim()
+            .split("\n\n")
+            .map(str::parse)
+            .collect::<Result<_, _>>()
+            .map(PassportBatch)
     }
 }
 

@@ -11,13 +11,11 @@ impl FromStr for XmasData {
     type Err = ParseIntError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        Ok(XmasData(
-            input
-                .trim()
-                .split('\n')
-                .map(str::parse)
-                .collect::<Result<_, _>>()?,
-        ))
+        input
+            .lines()
+            .map(str::parse)
+            .collect::<Result<_, _>>()
+            .map(XmasData)
     }
 }
 

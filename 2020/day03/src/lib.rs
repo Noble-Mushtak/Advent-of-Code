@@ -22,21 +22,19 @@ impl FromStr for CellGrid {
     type Err = ParseCellError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        Ok(CellGrid(
-            input
-                .trim()
-                .split('\n')
-                .map(|line| {
-                    line.chars()
-                        .map(|ch| match ch {
-                            '.' => Ok(Cell::Empty),
-                            '#' => Ok(Cell::Tree),
-                            _ => Err(ParseCellError::NotCell { unknown_char: ch }),
-                        })
-                        .collect::<Result<_, _>>()
-                })
-                .collect::<Result<_, _>>()?,
-        ))
+        input
+            .lines()
+            .map(|line| {
+                line.chars()
+                    .map(|ch| match ch {
+                        '.' => Ok(Cell::Empty),
+                        '#' => Ok(Cell::Tree),
+                        _ => Err(ParseCellError::NotCell { unknown_char: ch }),
+                    })
+                    .collect::<Result<_, _>>()
+            })
+            .collect::<Result<_, _>>()
+            .map(CellGrid)
     }
 }
 

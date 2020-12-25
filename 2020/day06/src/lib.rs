@@ -21,12 +21,11 @@ impl FromStr for Group {
     type Err = String;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        Ok(Group(
-            input
-                .split('\n')
-                .map(str::parse)
-                .collect::<Result<_, _>>()?,
-        ))
+        input
+            .lines()
+            .map(str::parse)
+            .collect::<Result<_, _>>()
+            .map(Group)
     }
 }
 
@@ -37,12 +36,11 @@ impl FromStr for Groups {
     type Err = String;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        Ok(Groups(
-            input
-                .split("\n\n")
-                .map(str::parse)
-                .collect::<Result<_, _>>()?,
-        ))
+        input
+            .split("\n\n")
+            .map(str::parse)
+            .collect::<Result<_, _>>()
+            .map(Groups)
     }
 }
 

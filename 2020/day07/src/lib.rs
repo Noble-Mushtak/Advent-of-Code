@@ -119,7 +119,7 @@ impl FromStr for ColorGraph {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let mut graph = ColorGraph::new();
-        for line in input.trim().split('\n') {
+        for line in input.lines() {
             graph.parse_rule_and_update_graph(line)?
         }
         Ok(graph)

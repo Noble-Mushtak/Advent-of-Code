@@ -24,12 +24,10 @@ impl FromStr for ExpenseReport {
     type Err = ParseReportError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(ExpenseReport::new(
-            s.trim()
-                .split('\n')
-                .map(|line| line.parse().map_err(|_| Self::Err::ParseLineError))
-                .collect::<Result<Vec<u64>, Self::Err>>()?,
-        ))
+        s.lines()
+            .map(|line| line.parse().map_err(|_| Self::Err::ParseLineError))
+            .collect::<Result<_, _>>()
+            .map(ExpenseReport::new)
     }
 }
 
@@ -78,15 +76,15 @@ mod tests {
 
     #[test]
     fn test_parse_report() {
+        assert_eq!("".parse(), Ok(ExpenseReport::new(vec![])));
         assert_eq!("1\n".parse(), Ok(ExpenseReport::new(vec![1])));
         assert_eq!("1".parse(), Ok(ExpenseReport::new(vec![1])));
-        assert_eq!("\n2\n3\n".parse(), Ok(ExpenseReport::new(vec![2, 3])));
+        assert_eq!("2\n3\n".parse(), Ok(ExpenseReport::new(vec![2, 3])));
         assert_eq!("2\n3".parse(), Ok(ExpenseReport::new(vec![2, 3])));
         assert_eq!(
             "1721\n979\n366\n299\n".parse(),
             Ok(ExpenseReport::new(vec![1721, 979, 366, 299]))
         );
-        assert!("".parse::<ExpenseReport>().is_err());
         assert!("efrgfhj\n12349".parse::<ExpenseReport>().is_err());
         assert!("1\n2\nd\n2\n4\n".parse::<ExpenseReport>().is_err());
     }

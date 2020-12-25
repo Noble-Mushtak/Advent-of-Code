@@ -10,7 +10,7 @@ use crate::program::*;
 fn find_loop(prog: &Program) -> Result<ProgramState, (ProgramState, ProgramError)> {
     let mut prog_state = INITIAL_STATE;
     let mut insts_visited = HashSet::new();
-    
+
     while !insts_visited.contains(&prog_state.inst_ptr) {
         insts_visited.insert(prog_state.inst_ptr);
         if let Err(err) = prog.update_state(&mut prog_state) {

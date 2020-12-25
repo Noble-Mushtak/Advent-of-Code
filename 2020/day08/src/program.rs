@@ -50,13 +50,11 @@ impl FromStr for Program {
     type Err = ParseInstructionError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        Ok(Program(
-            input
-                .trim()
-                .split('\n')
-                .map(str::parse)
-                .collect::<Result<_, _>>()?,
-        ))
+        input
+            .lines()
+            .map(str::parse)
+            .collect::<Result<_, _>>()
+            .map(Program)
     }
 }
 

@@ -168,13 +168,11 @@ impl FromStr for SeatIdentifiers {
     type Err = ParseSeatError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        Ok(SeatIdentifiers(
-            input
-                .trim()
-                .split('\n')
-                .map(str::parse)
-                .collect::<Result<_, _>>()?,
-        ))
+        input
+            .lines()
+            .map(str::parse)
+            .collect::<Result<_, _>>()
+            .map(SeatIdentifiers)
     }
 }
 

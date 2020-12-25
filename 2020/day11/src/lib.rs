@@ -38,8 +38,7 @@ impl FromStr for Grid {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         input
-            .trim()
-            .split('\n')
+            .lines()
             .map(|line| line.chars().map(char::try_into).collect::<Result<_, _>>())
             .collect::<Result<_, _>>()
             .map(Grid)

@@ -11,13 +11,11 @@ impl FromStr for JoltageData {
     type Err = ParseIntError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        Ok(JoltageData(
-            input
-                .trim()
-                .split('\n')
-                .map(str::parse)
-                .collect::<Result<_, _>>()?,
-        ))
+        input
+            .lines()
+            .map(str::parse)
+            .collect::<Result<_, _>>()
+            .map(JoltageData)
     }
 }
 
@@ -106,12 +104,14 @@ mod tests {
     }
 
     #[test]
-    fn test_calc_distr() {
+    fn test_count_arrangements() {
         let mut data1 = example_data1();
+        data1.0.push(0);
         data1.0.sort_unstable();
         assert_eq!(data1.count_arrangements(), 8);
 
         let mut data2 = example_data2();
+        data2.0.push(0);
         data2.0.sort_unstable();
         assert_eq!(data2.count_arrangements(), 19208);
     }

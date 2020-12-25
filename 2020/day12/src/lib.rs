@@ -138,26 +138,23 @@ struct Location {
     y: isize,
 }
 
+impl Direction {
+    fn waypoint(&self) -> Location {
+        match self {
+            Direction::East => Location { x: 1, y: 0 },
+            Direction::West => Location { x: -1, y: 0 },
+            Direction::North => Location { x: 0, y: 1 },
+            Direction::South => Location { x: 0, y: -1 },
+        }
+    }
+}
+
 impl Location {
-    fn move_by(self, dir: &Direction, magnitude: &usize) -> Self {
+    fn move_by(self, waypoint: &Location, magnitude: &usize) -> Self {
         let magnitude = *magnitude as isize;
-        match dir {
-            Direction::East => Location {
-                x: self.x + magnitude,
-                ..self
-            },
-            Direction::West => Location {
-                x: self.x - magnitude,
-                ..self
-            },
-            Direction::North => Location {
-                y: self.y + magnitude,
-                ..self
-            },
-            Direction::South => Location {
-                y: self.y - magnitude,
-                ..self
-            },
+        Location {
+            x: self.x + magnitude * waypoint.x,
+            y: self.y + magnitude * waypoint.y,
         }
     }
 
@@ -198,11 +195,11 @@ impl ShipState {
 
         match instr {
             Move(dir, mag) => ShipState {
-                loc: self.loc.move_by(dir, mag),
+                loc: self.loc.move_by(&dir.waypoint(), mag),
                 ..self
             },
             MoveForward(mag) => ShipState {
-                loc: self.loc.move_by(&self.dir, mag),
+                loc: self.loc.move_by(&self.dir.waypoint(), mag),
                 ..self
             },
             Turn(turn_type) => ShipState {
@@ -217,14 +214,11 @@ impl ShipState {
 
         match instr {
             Move(dir, mag) => ShipState {
-                waypoint: self.waypoint.move_by(dir, mag),
+                waypoint: self.waypoint.move_by(&dir.waypoint(), mag),
                 ..self
             },
             MoveForward(mag) => ShipState {
-                loc: Location {
-                    x: self.loc.x + (*mag as isize) * self.waypoint.x,
-                    y: self.loc.y + (*mag as isize) * self.waypoint.y,
-                },
+                loc: self.loc.move_by(&self.waypoint, mag),
                 ..self
             },
             Turn(turn_type) => ShipState {

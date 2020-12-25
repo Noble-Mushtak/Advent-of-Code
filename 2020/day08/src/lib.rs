@@ -28,29 +28,28 @@ struct CorrectedProgramTermination {
     termination_acc: isize,
 }
 
-fn find_error(prog: &mut Program) -> Option<CorrectedProgramTermination> {
+fn modify_inst(inst: &mut Instruction) {
     use Instruction::*;
+    match inst {
+        Acc(_) => (),
+        Jmp(num) => *inst = Nop(*num),
+        Nop(num) => *inst = Jmp(*num),
+    };
+}
 
-    for i in 0..prog.0.len() {
-        fn modify_inst(inst: &mut Instruction) {
-            match inst {
-                Acc(_) => (),
-                Jmp(num) => *inst = Nop(*num),
-                Nop(num) => *inst = Jmp(*num),
-            };
-        };
+fn find_error(prog: &mut Program) -> Option<CorrectedProgramTermination> {
+    (0..prog.0.len()).find_map(|i| {
         modify_inst(prog.0.get_mut(i).unwrap());
-
         if let Err((prog_state, ProgramError::ProgramTerminated)) = find_loop(prog) {
-            return Some(CorrectedProgramTermination {
+            Some(CorrectedProgramTermination {
                 corrected_inst_ptr: i,
                 termination_acc: prog_state.acc,
-            });
+            })
+        } else {
+            modify_inst(prog.0.get_mut(i).unwrap());
+            None
         }
-
-        modify_inst(prog.0.get_mut(i).unwrap());
-    }
-    None
+    })
 }
 
 pub fn run() -> Result<(), Box<dyn Error>> {

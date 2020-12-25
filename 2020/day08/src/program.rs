@@ -61,21 +61,15 @@ impl FromStr for Program {
 }
 
 #[derive(PartialEq, Debug)]
-pub struct ProgramState<'a> {
-    pub prog: &'a Program,
+pub struct ProgramState {
     pub acc: isize,
     pub inst_ptr: usize,
 }
 
-impl Program {
-    pub fn start_execution(&self) -> ProgramState {
-        ProgramState {
-            prog: &self,
-            acc: 0,
-            inst_ptr: 0,
-        }
-    }
-}
+pub const INITIAL_STATE: ProgramState = ProgramState {
+    acc: 0,
+    inst_ptr: 0,
+};
 
 #[derive(PartialEq, Debug, Snafu)]
 pub enum ProgramError {
@@ -84,13 +78,13 @@ pub enum ProgramError {
     BadJump,
 }
 
-impl<'a> ProgramState<'a> {
-    pub fn advance_step(&mut self) -> Result<(), ProgramError> {
+impl Program {
+    pub fn update_state(&self, prog_state: &mut ProgramState) -> Result<(), ProgramError> {
         use Instruction::*;
         use ProgramError::*;
 
-        let cur_inst = self.prog.0.get(self.inst_ptr).ok_or_else(|| {
-            if self.inst_ptr == self.prog.0.len() {
+        let cur_inst = self.0.get(prog_state.inst_ptr).ok_or_else(|| {
+            if prog_state.inst_ptr == self.0.len() {
                 ProgramTerminated
             } else {
                 InstructionNotFound
@@ -98,16 +92,16 @@ impl<'a> ProgramState<'a> {
         })?;
         match cur_inst {
             Acc(num) => {
-                self.acc += num;
-                self.inst_ptr += 1;
+                prog_state.acc += num;
+                prog_state.inst_ptr += 1;
             }
             Jmp(num) => {
-                self.inst_ptr = ((self.inst_ptr as isize) + num)
+                prog_state.inst_ptr = ((prog_state.inst_ptr as isize) + num)
                     .try_into()
                     .map_err(|_| BadJump)?;
             }
             Nop(_) => {
-                self.inst_ptr += 1;
+                prog_state.inst_ptr += 1;
             }
         };
         Ok(())
@@ -178,20 +172,20 @@ acc +6"
     #[test]
     fn test_exec() -> Result<(), ProgramError> {
         let prog = example_program();
-        let mut prog_state = prog.start_execution();
-        prog_state.advance_step()?;
+        let mut prog_state = INITIAL_STATE;
+        prog.update_state(&mut prog_state)?;
         assert_eq!(prog_state.inst_ptr, 1);
-        prog_state.advance_step()?;
+        prog.update_state(&mut prog_state)?;
         assert_eq!(prog_state.inst_ptr, 2);
-        prog_state.advance_step()?;
+        prog.update_state(&mut prog_state)?;
         assert_eq!(prog_state.inst_ptr, 6);
-        prog_state.advance_step()?;
+        prog.update_state(&mut prog_state)?;
         assert_eq!(prog_state.inst_ptr, 7);
-        prog_state.advance_step()?;
+        prog.update_state(&mut prog_state)?;
         assert_eq!(prog_state.inst_ptr, 3);
-        prog_state.advance_step()?;
+        prog.update_state(&mut prog_state)?;
         assert_eq!(prog_state.inst_ptr, 4);
-        prog_state.advance_step()?;
+        prog.update_state(&mut prog_state)?;
         assert_eq!(prog_state.inst_ptr, 1);
         Ok(())
     }
@@ -199,21 +193,21 @@ acc +6"
     #[test]
     fn test_termination() -> Result<(), ProgramError> {
         let prog = example_program2();
-        let mut prog_state = prog.start_execution();
-        prog_state.advance_step()?;
+        let mut prog_state = INITIAL_STATE;
+        prog.update_state(&mut prog_state)?;
         assert_eq!(prog_state.inst_ptr, 1);
-        prog_state.advance_step()?;
+        prog.update_state(&mut prog_state)?;
         assert_eq!(prog_state.inst_ptr, 2);
-        prog_state.advance_step()?;
+        prog.update_state(&mut prog_state)?;
         assert_eq!(prog_state.inst_ptr, 6);
-        prog_state.advance_step()?;
+        prog.update_state(&mut prog_state)?;
         assert_eq!(prog_state.inst_ptr, 7);
-        prog_state.advance_step()?;
+        prog.update_state(&mut prog_state)?;
         assert_eq!(prog_state.inst_ptr, 8);
-        prog_state.advance_step()?;
+        prog.update_state(&mut prog_state)?;
         assert_eq!(prog_state.inst_ptr, 9);
         assert_eq!(
-            prog_state.advance_step(),
+            prog.update_state(&mut prog_state),
             Err(ProgramError::ProgramTerminated)
         );
         Ok(())

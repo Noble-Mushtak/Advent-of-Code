@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use multimap::MultiMap;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::error::Error;
 use std::fs;
@@ -36,8 +37,9 @@ peg::parser! {
 
 #[derive(PartialEq, Debug)]
 struct AllergenInfo {
-    all_allergens: HashSet<Allergen>,
-    allergen_map: HashMap<Ingredient, HashSet<Allergen>>,
+    all_allergens: Vec<Allergen>,
+    all_ingredients: Vec<Ingredient>,
+    allergen_map: MultiMap<Ingredient, Allergen>,
 }
 
 fn hashset_union<T: Eq + Hash + Clone>(set1: HashSet<T>, set2: HashSet<T>) -> HashSet<T> {
@@ -57,11 +59,7 @@ fn calc_allergen_info(foods: &[Food]) -> AllergenInfo {
         .iter()
         .map(|food| food.ingredients.clone())
         .fold(HashSet::new(), hashset_union);
-    let mut allergen_map = all_ingredients
-        .clone()
-        .into_iter()
-        .map(|ingredient| (ingredient, HashSet::new()))
-        .collect::<HashMap<_, _>>();
+    let mut allergen_map = MultiMap::new();
 
     for allergen in all_allergens.iter() {
         for ingredient in foods
@@ -70,28 +68,18 @@ fn calc_allergen_info(foods: &[Food]) -> AllergenInfo {
             .map(|food| food.ingredients.clone())
             .fold(all_ingredients.clone(), hashset_intersection)
         {
-            allergen_map
-                .get_mut(&ingredient)
-                .unwrap()
-                .insert(allergen.clone());
+            allergen_map.insert(ingredient.clone(), allergen.clone());
         }
     }
 
     AllergenInfo {
-        all_allergens,
+        all_allergens: all_allergens.into_iter().collect(),
+        all_ingredients: all_ingredients.into_iter().collect(),
         allergen_map,
     }
 }
 
 fn calc_true_allergen_map(info: AllergenInfo) -> HashMap<Ingredient, Allergen> {
-    let allergens_vec = info.all_allergens.into_iter().collect::<Vec<_>>();
-    let ingreds_vec = info
-        .allergen_map
-        .iter()
-        .map(|(ingred, _)| ingred)
-        .cloned()
-        .collect::<Vec<_>>();
-
     let mut capacities = HashMap::new();
     let mut edges = HashMap::new();
     let mut add_edge = |v1, v2| edges.entry(v1).or_insert(vec![]).push(v2);
@@ -101,23 +89,24 @@ fn calc_true_allergen_map(info: AllergenInfo) -> HashMap<Ingredient, Allergen> {
         capacities.insert((v1, v2), 1);
     };
 
-    let source = ingreds_vec.len() + allergens_vec.len();
-    let sink = ingreds_vec.len() + allergens_vec.len() + 1;
-    for (i, ingred) in ingreds_vec.iter().enumerate() {
+    let source = info.all_ingredients.len() + info.all_allergens.len();
+    let sink = info.all_ingredients.len() + info.all_allergens.len() + 1;
+    for (i, ingred) in info.all_ingredients.iter().enumerate() {
         add_edge_with_capacity(source, i);
-        for allergen in info.allergen_map[ingred].iter() {
+        for allergen in info.allergen_map.get_vec(ingred).unwrap_or(&vec![]) {
             add_edge_with_capacity(
                 i,
-                ingreds_vec.len()
-                    + allergens_vec
+                info.all_ingredients.len()
+                    + info
+                        .all_allergens
                         .iter()
                         .position(|allergen2| allergen2 == allergen)
                         .unwrap(),
             );
         }
     }
-    for i in 0..allergens_vec.len() {
-        add_edge_with_capacity(ingreds_vec.len() + i, sink);
+    for i in 0..info.all_allergens.len() {
+        add_edge_with_capacity(info.all_ingredients.len() + i, sink);
     }
 
     //From Day 16
@@ -174,8 +163,8 @@ fn calc_true_allergen_map(info: AllergenInfo) -> HashMap<Ingredient, Allergen> {
     for ((i, j), fl) in flow {
         if fl > 0 && i != source && j != sink {
             mapping.insert(
-                ingreds_vec[i].clone(),
-                allergens_vec[j - ingreds_vec.len()].clone(),
+                info.all_ingredients[i].clone(),
+                info.all_allergens[j - info.all_ingredients.len()].clone(),
             );
         }
     }
@@ -185,12 +174,11 @@ fn calc_true_allergen_map(info: AllergenInfo) -> HashMap<Ingredient, Allergen> {
 pub fn run() -> Result<(), Box<dyn Error>> {
     let foods = parser::parse(&fs::read_to_string("in.txt")?[..])?;
 
-    let mut info = calc_allergen_info(&foods[..]);
+    let info = calc_allergen_info(&foods[..]);
     let good_ingredients = info
-        .allergen_map
+        .all_ingredients
         .iter()
-        .filter(|(_, poss_allergens)| poss_allergens.is_empty())
-        .map(|(ingred, _)| ingred)
+        .filter(|ingred| !info.allergen_map.contains_key(ingred))
         .collect::<HashSet<_>>();
     println!(
         "Part 1: {}",
@@ -202,11 +190,6 @@ pub fn run() -> Result<(), Box<dyn Error>> {
             .count()
     );
 
-    info.allergen_map = info
-        .allergen_map
-        .into_iter()
-        .filter(|(_, poss_allergens)| !poss_allergens.is_empty())
-        .collect();
     let mut true_list = calc_true_allergen_map(info).into_iter().collect::<Vec<_>>();
     true_list.sort_by(|(_, allergen1), (_, allergen2)| allergen1.0.cmp(&allergen2.0));
     println!(
@@ -250,10 +233,12 @@ sqjhc mxmxvkd sbzzf (contains fish)",
         let foods = example_data();
         let info = calc_allergen_info(&foods);
         assert_eq!(
-            info.allergen_map
+            info.all_ingredients
                 .iter()
-                .filter(|(ingredient, poss_allergens)| poss_allergens.is_empty())
-                .map(|(ingred, _)| ingred.clone())
+                .cloned()
+                .collect::<HashSet<_>>()
+                .difference(&info.allergen_map.keys().cloned().collect::<HashSet<_>>())
+                .cloned()
                 .collect::<HashSet<_>>(),
             vec!["kfcds", "nhms", "sbzzf", "trh"]
                 .into_iter()

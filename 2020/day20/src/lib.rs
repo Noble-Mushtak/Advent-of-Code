@@ -124,19 +124,23 @@ impl Tile {
     }
 
     fn flip_rows(&mut self) {
-        let size = self.0.len();
-        for i in 0..size / 2 {
+        let length = self.0.len();
+        for i in 0..length / 2 {
             let (left, right) = self.0.split_at_mut(i + 1);
-            std::mem::swap(&mut left[i], &mut right[size - 2 * i - 2]);
+            std::mem::swap(&mut left[i], &mut right[length - 2 * i - 2]);
         }
     }
 
     fn flip_columns(&mut self) {
-        let size = self.0.len();
-        for i in 0..size {
-            for j in 0..size / 2 {
+        if self.0.is_empty() {
+            return;
+        }
+        let length = self.0.len();
+        let width = self.0[0].len();
+        for i in 0..length {
+            for j in 0..width / 2 {
                 let (left, right) = self.0[i].split_at_mut(j + 1);
-                std::mem::swap(&mut left[j], &mut right[size - 2 * j - 2]);
+                std::mem::swap(&mut left[j], &mut right[width - 2 * j - 2]);
             }
         }
     }

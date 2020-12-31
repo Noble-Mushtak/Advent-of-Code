@@ -464,6 +464,7 @@ impl Image {
                     })
                     .collect::<String>()
             })
+            //.join("\n") //One must import itertools::Itertools in order for join to work on an iterator of Strings.
             .fold(String::new(), |acc, row_str| acc + &row_str[..] + "\n")
     }
 }

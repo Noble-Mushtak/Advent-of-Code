@@ -1,3 +1,5 @@
+#![feature(destructuring_assignment)]
+
 use snafu::Snafu;
 use std::error::Error;
 use std::fs;
@@ -101,28 +103,14 @@ struct EuclidResult {
 }
 
 fn extended_euclid(mod1: &u128, mod2: &u128) -> EuclidResult {
-    let mut mod1 = *mod1 as i128;
-    let mut mod2 = *mod2 as i128;
-
-    let mut r1 = 1;
-    let mut s1 = 0;
-    let mut r2 = 0;
-    let mut s2 = 1;
-    if mod1 < mod2 {
-        std::mem::swap(&mut mod1, &mut mod2);
-        std::mem::swap(&mut r1, &mut r2);
-        std::mem::swap(&mut s1, &mut s2);
-    }
+    let (mut mod1, mut mod2) = (*mod1 as i128, *mod2 as i128);
+    let (mut r1, mut s1) = (1, 0);
+    let (mut r2, mut s2) = (0, 1);
     while mod2 > 0 {
         let coeff = mod1 / mod2;
-        let shift_tuple = |x1: &mut i128, x2: &mut i128| {
-            let temp = *x2;
-            *x2 = (*x1) - coeff * (*x2);
-            *x1 = temp;
-        };
-        shift_tuple(&mut mod1, &mut mod2);
-        shift_tuple(&mut r1, &mut r2);
-        shift_tuple(&mut s1, &mut s2);
+        (mod1, mod2) = (mod2, mod1-coeff*mod2);
+        (r1, r2) = (r2, r1-coeff*r2);
+        (s1, s2) = (s2, s1-coeff*s2);
     }
     EuclidResult {
         coeff1: r1,

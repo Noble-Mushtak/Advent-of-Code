@@ -42,9 +42,8 @@ impl Bitmask {
                 (
                     match single_bitmask {
                         NoMask => cur_nums
-                            .iter()
-                            .map(|&num| num | cur_pow2)
-                            .chain(cur_nums.iter().map(|&num| num & (ALL_1S ^ cur_pow2)))
+                            .into_iter()
+                            .flat_map(|num| vec![num | cur_pow2, num & (ALL_1S ^ cur_pow2)])
                             .collect(),
                         MustBe1 => cur_nums.into_iter().map(|num| num | cur_pow2).collect(),
                         MustBe0 => cur_nums,

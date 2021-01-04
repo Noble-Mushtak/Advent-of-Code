@@ -68,17 +68,30 @@ fn node_get_neighbor<T>(node: &Rc<CircularNode<T>>, dir: Direction) -> Rc<Circul
     neighbor_rc
 }
 
-fn node_insert_clockwise<T>(node: &Rc<CircularNode<T>>, val: T) -> Rc<CircularNode<T>> {
+#[derive(Debug)]
+enum NodeOrValue<T> {
+    Node(Rc<CircularNode<T>>),
+    Value(T),
+}
+
+fn node_insert_clockwise<T>(node: &Rc<CircularNode<T>>, new_insert: NodeOrValue<T>) -> Rc<CircularNode<T>> {
     let clockwise_node = match &*node.clockwise.borrow() {
         MaybeRc::Rc(next_node) => MaybeRc::Rc(Rc::clone(&next_node)),
         MaybeRc::Weak(next_node) => MaybeRc::Weak(Weak::clone(&next_node)),
     };
 
-    let new_node = Rc::new(CircularNode {
-        val,
-        clockwise: RefCell::new(clockwise_node),
-        counterclockwise: RefCell::new(Rc::downgrade(&node)),
-    });
+    let new_node = match new_insert {
+        NodeOrValue::Node(node2) => {
+            *node2.clockwise.borrow_mut() = clockwise_node;
+            *node2.counterclockwise.borrow_mut() = Rc::downgrade(&node);
+            node2
+        },
+        NodeOrValue::Value(val) => Rc::new(CircularNode {
+            val,
+            clockwise: RefCell::new(clockwise_node),
+            counterclockwise: RefCell::new(Rc::downgrade(&node)),
+        }),
+    };
     let c_rc = node_get_neighbor(&node, Direction::Clockwise);
     *c_rc.counterclockwise.borrow_mut() = Rc::downgrade(&new_node);
     *node.clockwise.borrow_mut() = MaybeRc::Rc(Rc::clone(&new_node));
@@ -100,7 +113,7 @@ impl<T> CircularList<T> {
                 *self = CircularList::NonEmpty(Rc::clone(&new_node));
                 new_node
             }
-            CircularList::NonEmpty(node) => node_insert_clockwise(&node, val),
+            CircularList::NonEmpty(node) => node_insert_clockwise(&node, NodeOrValue::Value(val)),
         }
     }
 
@@ -108,7 +121,7 @@ impl<T> CircularList<T> {
         match self {
             CircularList::Empty => self.insert_clockwise(val),
             CircularList::NonEmpty(node) => {
-                node_insert_clockwise(&node_get_neighbor(&node, Direction::CounterClockwise), val)
+                node_insert_clockwise(&node_get_neighbor(&node, Direction::CounterClockwise), NodeOrValue::Value(val))
             }
         }
     }
@@ -119,7 +132,7 @@ impl<T> CircularList<T> {
         if let Some(first_val) = vals_iter.next() {
             let mut last_node = res.insert_clockwise(first_val);
             for val in vals_iter {
-                last_node = node_insert_clockwise(&last_node, val);
+                last_node = node_insert_clockwise(&last_node, NodeOrValue::Value(val));
             }
         }
         res
@@ -265,7 +278,7 @@ impl CupsGameState {
                 min_val = std::cmp::min(min_val, val.0);
                 max_val = std::cmp::max(max_val, val.0);
 
-                last_node = node_insert_clockwise(&last_node, val);
+                last_node = node_insert_clockwise(&last_node, NodeOrValue::Value(val));
                 res.locs.insert(val, Rc::downgrade(&last_node));
             }
 
@@ -306,9 +319,10 @@ impl CupsGameState {
             .unwrap_or_else(|| panic!("Destination {} not found!", destination.0))
             .upgrade()
             .expect(BAD_NODE_ERR);
-        for node in removed_neighbors.iter().rev() {
-            let new_node = node_insert_clockwise(&dest_loc, node.val);
-            self.locs.insert(node.val, Rc::downgrade(&new_node));
+        for node in removed_neighbors.into_iter().rev() {
+            let node_val = node.val;
+            let new_node = node_insert_clockwise(&dest_loc, NodeOrValue::Node(node));
+            self.locs.insert(node_val, Rc::downgrade(&new_node));
         }
     }
 

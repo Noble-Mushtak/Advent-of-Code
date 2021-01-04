@@ -320,9 +320,7 @@ impl CupsGameState {
             .upgrade()
             .expect(BAD_NODE_ERR);
         for node in removed_neighbors.into_iter().rev() {
-            let node_val = node.val;
-            let new_node = node_insert_clockwise(&dest_loc, NodeOrValue::Node(node));
-            self.locs.insert(node_val, Rc::downgrade(&new_node));
+            node_insert_clockwise(&dest_loc, NodeOrValue::Node(node));
         }
     }
 

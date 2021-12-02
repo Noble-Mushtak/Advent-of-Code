@@ -6,3 +6,4 @@ Here's every year I've participated in Advent of Code and the language I used fo
 
  * 2019 -- Haskell
  * 2020 -- Rust
+ * 2021 -- Scala

@@ -3,11 +3,11 @@ object main {
     //Slope trick: https://codeforces.com/blog/entry/77298
     //Let f_p(x) = cost to move from position p to position x = |x-p|
     //We can represent f_p(x) using slope trick:
-    // - As x -> -infinity, f_p(x) = -x + p
+    // - For all x < p, f_p(x) = -x + p
     // - At x=p, the slope of f_p increases by 2 (goes from -1 to 1)
     //Let c(x) = total cost to move all crabs to position x
     //         = sum of f_p(x) over all positions p
-    // - As x -> infinity, c(x) = -(number of positions)*x + (sum of all positions p)
+    // - For all x < (minimum of all positions p), c(x) = -(number of positions)*x + (sum of all positions p)
     // - For all positions p, at x=p, the slope of c increases by 2
     def solvePart1(positions: Vector[Long]): Long = {
         var slope = -positions.length

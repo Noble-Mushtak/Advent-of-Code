@@ -2,46 +2,28 @@ import scala.io.Source
 import scala.collection.mutable.ArrayBuffer
 import scala.util.control.Breaks._
 object main {
-    class Entry(val signalPatterns: Vector[Set[Long]], val outputPatterns: Vector[Set[Long]])
-
-    def parsePattern(pattern: String): Set[Long] = {
-        var ans = new ArrayBuffer[Long]()
-        for (ch <- pattern) {
-            ans += ch.toLong-'a'.toLong
-        }
-        ans.toSet
-    }
+    class Entry(val signalPatterns: Vector[Set[Char]], val outputPatterns: Vector[Set[Char]])
 
     def parseLine(line: String): Entry = {
         val s"$signals | $outputs" = line
-        new Entry(signals.split(" ").map(parsePattern).toVector, outputs.split(" ").map(parsePattern).toVector)
+        new Entry(signals.split(" ").map(_.toSet).toVector, outputs.split(" ").map(_.toSet).toVector)
     }
 
-    def findByCount(patterns: Vector[Set[Long]], cnt: Int): Set[Long] = {
-        for (pattern <- patterns) {
-            if (pattern.size == cnt) {
-                return pattern
-            }
-        }
-        throw new IllegalArgumentException(f"Pattern with size ${cnt} not found!")
+    def findByCount(patterns: Vector[Set[Char]], cnt: Int): Set[Char] = {
+        patterns.find((pattern) => (pattern.size == cnt))
+                .get
     }
 
-    def findByCountAndIntersection(patterns: Vector[Set[Long]], cnt: Int, desPattern: Set[Long], cnt2: Int): Set[Long] = {
-        for (pattern <- patterns) {
-            if ((pattern.size == cnt) && (pattern.intersect(desPattern).size == cnt2)) {
-                return pattern
-            }
-        }
-        throw new IllegalArgumentException(f"Pattern with size ${cnt} not found!")
+    def findByCountAndIntersection(patterns: Vector[Set[Char]], cnt: Int, desPattern: Set[Char], cnt2: Int): Set[Char] = {
+        patterns.find((pattern) => (pattern.size == cnt) && (pattern.intersect(desPattern).size == cnt2))
+                .get
     }
 
-    def findByCountAndIntersectionAndNot(patterns: Vector[Set[Long]], cnt: Int, desPattern: Set[Long], cnt2: Int, undesPatterns: Set[Set[Long]]): Set[Long] = {
-        for (pattern <- patterns) {
-            if ((pattern.size == cnt) && (pattern.intersect(desPattern).size == cnt2) && !undesPatterns.contains(pattern)) {
-                return pattern
-            }
-        }
-        throw new IllegalArgumentException(f"Pattern with size ${cnt} not found!")
+    def findByCountAndIntersectionAndNot(patterns: Vector[Set[Char]], cnt: Int, desPattern: Set[Char],
+                                         cnt2: Int, undesPatterns: Set[Set[Char]]): Set[Char] = {
+        patterns.find((pattern) => (pattern.size == cnt) && (pattern.intersect(desPattern).size == cnt2)
+                                   && !undesPatterns.contains(pattern))
+                .get
     }
 
     def outputVal(entry: Entry): Long = {

@@ -1,1 +1,9 @@
+# first two lines: ignore all files without a dot in their name (e.g. executables)
+*/*
+!*/*.*
+# But don't ignore Makefiles
+!*/Makefile
+# Ignore backup files from Emacs
+*/*~
+# Ignore .txt files
 */*.txt

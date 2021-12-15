@@ -7,3 +7,8 @@ The solution to both parts for day `XX` are contained in the `main.scala` file i
     scala main.scala /path/to/in.txt
 
 where `/path/to/in.txt` is the path to the file containing the puzzle input for that day.
+
+For Day 15, which was solved using C\+\+17, there is a `Makefile`, so you can compile and run the C\+\+ program using the following commands:
+
+    make main
+    ./main < /path/to/in.txt

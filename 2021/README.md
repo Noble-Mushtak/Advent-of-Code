@@ -12,3 +12,7 @@ For Day 15, which was solved using C\+\+17, there is a `Makefile`, so you can co
 
     make main
     ./main < /path/to/in.txt
+
+For Day 16, which was solved using Python 3.8.10, you can just run the script using the following command:
+
+    python3 main.py /path/to/in.txt

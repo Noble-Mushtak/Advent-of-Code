@@ -16,7 +16,6 @@
 #endif
 
 typedef int64_t num;
-typedef int32_t num_nums;
 using namespace std;
 
 const num INF = 1e18;

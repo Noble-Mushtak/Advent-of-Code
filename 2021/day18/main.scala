@@ -11,30 +11,31 @@ object main {
         override def toString(): String = s"[$left,$right]"
     }
 
-    object SnailNumber {
-        def unapply(v: String): Option[SnailNumber] = {
-            try Some(RegularNumber(v.toInt))
-            catch {
-                case _: NumberFormatException => {
-                    if (v.length < 5) return None
-                    
-                    var end = 1
-                    var numParens = 0
-                    breakable { while (true) {
-                        v(end) match {
-                            case '[' => numParens += 1
-                            case ']' => numParens -= 1
-                            case _ => ()
-                        }
-                        end += 1
-                        if ((numParens == 0) || (end == v.length-2)) break()
-                    } }
-                    SnailNumber.unapply(v.substring(1, end)) flatMap { left => {
-                        SnailNumber.unapply(v.substring(end+1, v.length-1)) map { PairNumber(left, _) }
-                    } }
+    def parseSnailNumberHelp(string: String, idx: Int): (SnailNumber, Int) = {
+        string(idx) match {
+            case '[' => {
+                val (num1, idx1) = parseSnailNumberHelp(string, idx+1)
+                assert(string(idx1) == ',')
+                val (num2, idx2) = parseSnailNumberHelp(string, idx1+1)
+                assert(string(idx2) == ']')
+                (PairNumber(num1, num2), idx2+1)
+            }
+            case _ => {
+                var idx1 = idx
+                while ((idx1 < string.length) && (string(idx1) != ',') && (string(idx1) != ']')) {
+                    idx1 += 1
                 }
+                (RegularNumber(string.substring(idx, idx1).toInt), idx1)
             }
         }
+    }
+
+    def parseSnailNumber(string: String): SnailNumber = {
+        val (num, idx) = parseSnailNumberHelp(string, 0)
+        if (idx != string.length) {
+            throw new IllegalArgumentException(s"Found content after snail number: ${string.substring(idx, string.length)}")
+        }
+        num
     }
 
     def incLeftmostBy(num: SnailNumber, inc: Int): SnailNumber = {
@@ -130,7 +131,7 @@ object main {
     }
     
     def main(args: Array[String]): Unit = {
-        val puzzleInput = Source.fromFile(args(0)).getLines().map(SnailNumber.unapply).map(_.get).toVector
+        val puzzleInput = Source.fromFile(args(0)).getLines().map(parseSnailNumber).toVector
         var res = puzzleInput(0)
         for (i <- Range(1, puzzleInput.length)) {
             res = addSnailNumbers(res, puzzleInput(i))

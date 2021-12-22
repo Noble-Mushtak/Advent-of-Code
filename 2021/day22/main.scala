@@ -6,7 +6,7 @@ object Int {
     def unapply(v: String) = try Some(v.toInt) catch { case _: NumberFormatException => None }
 }
 object main {
-    val NUM_BITS = 63
+    val NUM_BITS = 64
     val SMALLBOUND = 50
     case class Command(val state: Boolean, val bounds: Vector[(Int, Int)])
 

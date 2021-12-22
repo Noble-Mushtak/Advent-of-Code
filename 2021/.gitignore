@@ -7,3 +7,5 @@
 */*~
 # Ignore .txt files
 */*.txt
+# Ignore .class files that occur from Scala compilation
+*/*.class

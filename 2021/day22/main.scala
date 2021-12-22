@@ -54,9 +54,24 @@ object main {
             val (minZ, maxZ) = comm.bounds(2)
             for (x <- Range(minX, maxX)) {
                 for (y <- Range(minY, maxY)) {
-                    for (z <- Range(minZ, maxZ)) {
-                        if (comm.state) locs(x)(y)(z/NUM_BITS) |= 1L << (z % NUM_BITS)
-                        else locs(x)(y)(z/NUM_BITS) &= ~(1L << (z % NUM_BITS))
+                    var z = minZ
+                    while (z < maxZ) {
+                        if (((z % NUM_BITS) == 0) && (z+NUM_BITS <= maxZ)) {
+                            locs(x)(y)(z/NUM_BITS) = if (comm.state) { ~0L } else { 0L }
+                            z += NUM_BITS
+                        } else {
+                            if (z+NUM_BITS-(z % NUM_BITS) <= maxZ) {
+                                val relBits = ((1L << (NUM_BITS-(z % NUM_BITS)))-1L) << (z % NUM_BITS)
+                                if (comm.state) locs(x)(y)(z/NUM_BITS) |= relBits
+                                else locs(x)(y)(z/NUM_BITS) &= ~relBits
+                                z += NUM_BITS-(z % NUM_BITS)
+                            } else {
+                                val relBits = ((1L << (maxZ-z))-1L) << (z % NUM_BITS)
+                                if (comm.state) locs(x)(y)(z/NUM_BITS) |= relBits
+                                else locs(x)(y)(z/NUM_BITS) &= ~relBits
+                                z = maxZ
+                            }
+                        }
                     }
                 }
             }
@@ -85,11 +100,14 @@ object main {
         var part2Ans = 0L
         for (i <- Range(0, sortedCoords(0).length-1)) {
             for (j <- Range(0, sortedCoords(1).length-1)) {
+                val intermProduct = (sortedCoords(0)(i+1)-sortedCoords(0)(i)).toLong*(sortedCoords(1)(j+1)-sortedCoords(1)(j)).toLong
+                var sumZs = 0L
                 for (k <- Range(0, sortedCoords(2).length-1)) {
                     if (((locs(i)(j)(k/NUM_BITS) >> (k % NUM_BITS)) & 1L) == 1L) {
-                        part2Ans += (sortedCoords(0)(i+1)-sortedCoords(0)(i)).toLong*(sortedCoords(1)(j+1)-sortedCoords(1)(j)).toLong*(sortedCoords(2)(k+1)-sortedCoords(2)(k)).toLong
+                        sumZs += (sortedCoords(2)(k+1)-sortedCoords(2)(k)).toLong
                     }
                 }
+                part2Ans += intermProduct*sumZs
             }
         }
         println(f"Part 2: ${part2Ans}")

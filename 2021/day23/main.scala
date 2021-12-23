@@ -27,25 +27,68 @@ object main {
         else (dig-1+'A'.toInt).toChar
     }
 
-    def formatNode(node: Long): String = {
-        f"#############\n#${formatDig(getBase5Dig(node, 16))}${formatDig(getBase5Dig(node, 17))}.${formatDig(getBase5Dig(node, 18))}.${formatDig(getBase5Dig(node, 19))}.${formatDig(getBase5Dig(node, 20))}.${formatDig(getBase5Dig(node, 21))}${formatDig(getBase5Dig(node, 22))}#\n###${formatDig(getBase5Dig(node, 0))}#${formatDig(getBase5Dig(node, 4))}#${formatDig(getBase5Dig(node, 8))}#${formatDig(getBase5Dig(node, 12))}###\n  #${formatDig(getBase5Dig(node, 1))}#${formatDig(getBase5Dig(node, 5))}#${formatDig(getBase5Dig(node, 9))}#${formatDig(getBase5Dig(node, 13))}#\n  #${formatDig(getBase5Dig(node, 2))}#${formatDig(getBase5Dig(node, 6))}#${formatDig(getBase5Dig(node, 10))}#${formatDig(getBase5Dig(node, 14))}#\n  #${formatDig(getBase5Dig(node, 3))}#${formatDig(getBase5Dig(node, 7))}#${formatDig(getBase5Dig(node, 11))}#${formatDig(getBase5Dig(node, 15))}#\n  #########"
+    def formatNode(numRooms: Int, numSpacesPerRoom: Int, node: Long): String = {
+        var ans = ""
+        for (i <- Range(0, 2*numRooms+5)) ans += "#"
+        ans += "\n"
+
+        ans += "#"
+        ans += formatDig(getBase5Dig(node, numRooms*numSpacesPerRoom))
+        for (j <- Range(0, numRooms+1)) {
+            if (j > 0) ans += "."
+            ans += formatDig(getBase5Dig(node, numRooms*numSpacesPerRoom+j+1))
+        }
+        ans += formatDig(getBase5Dig(node, numRooms*numSpacesPerRoom+numRooms+2))
+        ans += "#\n"
+
+        for (i <- Range(0, numSpacesPerRoom)) {
+            if (i == 0) ans += "##"
+            else ans += "  "
+            for (j <- Range(0, numRooms)) {
+                ans += "#"
+                ans += formatDig(getBase5Dig(node, numSpacesPerRoom*j+i))
+            }
+            ans += "#"
+            if (i == 0) ans += "##"
+            ans += "\n"
+        }
+
+        ans += "  "
+        for (i <- Range(0, 2*numRooms+1)) ans += "#"
+        ans
     }
 
-    def addVertex(dijkQ: PriorityQueue[(Long, Long)], dsts: Map[Long, Long], newNode: Long, newCost: Long): Unit = {
+    def addVertex(dijkQ: PriorityQueue[(Long, Long)], dsts: Map[Long, Long], prev: Map[Long, Long], curNode: Long, newNode: Long, newCost: Long): Unit = {
         if (!(dsts.contains(newNode)) || (dsts(newNode) > newCost)) {
+            prev(newNode) = curNode
             dsts(newNode) = newCost
             dijkQ.enqueue((-newCost, newNode))
         }
     }
 
-    def runDijk(numRooms: Int, numSpacesPerRoom: Int, startNode: Long, endNode: Long): Long = {
+    def runDijk(numRooms: Int, numSpacesPerRoom: Int, startNode: Long, endNode: Long, printPath: Boolean): Long = {
         var dijkQ = PriorityQueue((0L, startNode))
-        val dsts = Map(startNode -> 0L)
+        var dsts = Map(startNode -> 0L)
+        var prev = Map[Long, Long]() 
         while (!dijkQ.isEmpty) { breakable {
             val (negDst, curNode) = dijkQ.dequeue()
             val curDst = -negDst
             if (curDst != dsts(curNode)) break()
             if (curNode == endNode) {
+                if (printPath) {
+                    var path = ArrayBuffer[Long]()
+                    var pathNode = endNode
+                    while (prev.contains(pathNode)) {
+                        path += pathNode
+                        pathNode = prev(pathNode)
+                    }
+                    path += pathNode
+                    for (i <- Range(0, path.length)) {
+                        println(dsts(path(path.length-i-1)))
+                        println(formatNode(numRooms, numSpacesPerRoom, path(path.length-i-1)))
+                    }
+                }
+                
                 return curDst
             }
 
@@ -64,14 +107,14 @@ object main {
                 while ((j >= 0) && (getBase5Dig(curNode, numRooms*numSpacesPerRoom+j) == 0)) {
                     val newNode = curNode-curDig*curPow+curDig*longPow(5, numRooms*numSpacesPerRoom+j)
                     val movement = dst+1+2*(i+1-j)-(if (j == 0) { 1 } else { 0 })
-                    addVertex(dijkQ, dsts, newNode, curDst+longPow(10, curDig-1)*movement)
+                    addVertex(dijkQ, dsts, prev, curNode, newNode, curDst+longPow(10, curDig-1)*movement)
                     j -= 1
                 }
                 j = i+2
                 while ((j < 7) && (getBase5Dig(curNode, numRooms*numSpacesPerRoom+j) == 0)) {
                     val newNode = curNode-curDig*curPow+curDig*longPow(5, numRooms*numSpacesPerRoom+j)
                     val movement = dst+1+2*(j-i-2)-(if (j == 6) { 1 } else { 0 })
-                    addVertex(dijkQ, dsts, newNode, curDst+longPow(10, curDig-1)*movement)
+                    addVertex(dijkQ, dsts, prev, curNode, newNode, curDst+longPow(10, curDig-1)*movement)
                     j += 1
                 }
             } }
@@ -107,7 +150,7 @@ object main {
                 if (!spaceExists) break()
                 val newNode = curNode-curDig*longPow(5, numRooms*numSpacesPerRoom+i)+curDig*longPow(5, nextDig)
                 val movement = dst+1+2*(if (i > curDig) { i-curDig-1 } else { curDig-i })-(if ((i == 0) || (i == 6)) { 1 } else { 0 })
-                addVertex(dijkQ, dsts, newNode, curDst+longPow(10, curDig-1)*movement);
+                addVertex(dijkQ, dsts, prev, curNode, newNode, curDst+longPow(10, curDig-1)*movement)
             } }
         } }
         throw new IllegalArgumentException("Could not find path from start to end!")
@@ -115,11 +158,13 @@ object main {
     
     def main(args: Array[String]): Unit = {
         val puzzleInput = Source.fromFile(args(0)).getLines().toVector
+        val printPath = (args.length >= 2) && (args(1) == "-printpath")
+        
         val startNode1 = base5ToInt(Array(puzzleInput(3)(9), puzzleInput(2)(9), puzzleInput(3)(7), puzzleInput(2)(7), puzzleInput(3)(5), puzzleInput(2)(5), puzzleInput(3)(3), puzzleInput(2)(3)).map(ch => ch.toInt-'A'.toInt+1).toArray)
         val endNode1 = base5ToInt(Array(4, 4, 3, 3, 2, 2, 1, 1))
-        println(f"Part 1: ${runDijk(4, 2, startNode1, endNode1)}")
+        println(f"Part 1: ${runDijk(4, 2, startNode1, endNode1, printPath)}")
         val startNode2 = base5ToInt(Array(puzzleInput(3)(9), 'C', 'A', puzzleInput(2)(9), puzzleInput(3)(7), 'A', 'B', puzzleInput(2)(7), puzzleInput(3)(5), 'B', 'C', puzzleInput(2)(5), puzzleInput(3)(3), 'D', 'D', puzzleInput(2)(3)).map(ch => ch.toInt-'A'.toInt+1).toArray)
         val endNode2 = base5ToInt(Array(4, 4, 4, 4, 3, 3, 3, 3, 2, 2, 2, 2, 1, 1, 1, 1))
-        println(f"Part 2: ${runDijk(4, 4, startNode2, endNode2)}")
+        println(f"Part 2: ${runDijk(4, 4, startNode2, endNode2, printPath)}")
     }
 }

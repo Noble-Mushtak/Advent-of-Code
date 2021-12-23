@@ -16,3 +16,7 @@ For Day 15, which was solved using C\+\+17, there is a `Makefile`, so you can co
 For Days 16 and 20, which were solved using Python 3.8.10, you can just run the script using the following command:
 
     python3 main.py /path/to/in.txt
+
+For Day 23, there is an optional `-printpath` command line argument that you can use to print the path that is used to organize the amphipods with the least energy required. If you would like to the path to be printed, run the script as follows:
+
+    scala main.scala /path/to/in.txt -printpath

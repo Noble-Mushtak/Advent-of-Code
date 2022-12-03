@@ -7,3 +7,4 @@ Here's every year I've participated in Advent of Code and the language I used fo
  * 2019 -- Haskell
  * 2020 -- Rust
  * 2021 -- Scala (except for Day 15, which was done in C++, and Day 16 and 20, which were done in Python, in successful attempts to make the [Day 15](https://adventofcode.com/2021/leaderboard/day/15), [Day 16](https://adventofcode.com/2021/leaderboard/day/16), and [Day 20](https://adventofcode.com/2021/leaderboard/day/20) leaderboards)
+ * 2022 -- Rust (except for Day 2, which was done in Python, in a successful attempt to make the [Day 2](https://adventofcode.com/2022/leaderboard/day/2) leaderboard)

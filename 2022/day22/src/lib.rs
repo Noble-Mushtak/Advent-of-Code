@@ -48,6 +48,21 @@ fn rotate_right(dr: Direction) -> Direction {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+struct Orientation {
+    up_pole: (isize, isize, isize),    //3D unit vector representing the direction from the center of the cube
+                                       //to the face of the cube that is currently on top
+    right_pole: (isize, isize, isize), //3D unit vector representing the direction from the center of the cube
+                                       //to the face of the cube that is on the right
+}
+
+fn cross_product(pt1: (isize, isize, isize), pt2: (isize, isize, isize)) -> (isize, isize, isize) {
+    let (a,b,c) = pt1;
+    let (d,e,f) = pt2;
+    //Source: https://www.wolframalpha.com/input?i=cross+product+of+%28a%2Cb%2Cc%29+and+%28d%2Ce%2Cf%29
+    (-c*e+b*f, c*d-a*f, -b*d+a*e)
+}
+
 //Parsing expression grammer for parsing the input
 //Outputs tuple containing
 // - HashMap<Location, bool>,
@@ -119,15 +134,20 @@ fn calc_endpoint<F>(cur_maze: &HashMap<Location, bool>, comms: &VecDeque<Command
         match c {
             MoveC(mv) => {
                 for _ in 0..*mv {
+                    //New location = cur_loc + DIR_TPLS[cur_facing]
                     let new_cell = Location {
                         row: cur_loc.row+DIR_TPLS[cur_facing as usize].0,
                         col: cur_loc.col+DIR_TPLS[cur_facing as usize].1
                     };
+                    //Call wraparound_cell if the new location is not in cur_maze,
+                    //since that means the new location is out of the bounds of the net
                     let (new_facing, actual_new_cell) = if !cur_maze.contains_key(&new_cell) {
                         wraparound_cell(cur_facing, cur_loc)
                     } else {
                         (cur_facing, new_cell)
                     };
+                    //If this cell has a . in it, then update the current location and direction,
+                    //otherwise break from the loop and go to the next command
                     if cur_maze[&actual_new_cell] {
                         cur_loc = actual_new_cell;
                         cur_facing = new_facing;
@@ -143,92 +163,139 @@ fn calc_endpoint<F>(cur_maze: &HashMap<Location, bool>, comms: &VecDeque<Command
     (cur_facing, cur_loc)
 }
 
-fn cross_product(pt1: (isize, isize, isize), pt2: (isize, isize, isize)) -> (isize, isize, isize) {
-    let (a,b,c) = pt1;
-    let (d,e,f) = pt2;
-    //Source: https://www.wolframalpha.com/input?i=cross+product+of+%28a%2Cb%2Cc%29+and+%28d%2Ce%2Cf%29
-    (-c*e+b*f, c*d-a*f, -b*d+a*e)
-}
-
 pub fn run() -> Result<(), Box<dyn Error>> {
     let (cur_maze, comms) = parser::parse(&fs::read_to_string("in.txt")?)?;
-    
-    let mut mn_mx_by_row: HashMap<isize, (isize, isize)> = HashMap::new();
-    let mut mn_mx_by_col: HashMap<isize, (isize, isize)> = HashMap::new();
+
+    // -- Part 1 Code --
+    //Calculate the minimum and maximum column in every row,
+    //and the minimum and maximum row in every column
+    let mut mn_by_row: HashMap<isize, isize> = HashMap::new();
+    let mut mx_by_row: HashMap<isize, isize> = HashMap::new();
+    let mut mn_by_col: HashMap<isize, isize> = HashMap::new();
+    let mut mx_by_col: HashMap<isize, isize> = HashMap::new();
     for Location { row, col } in cur_maze.keys() {
-        mn_mx_by_row.entry(*row).and_modify(|(mn, mx)| {
-            *mn = min(*mn, *col);
-            *mx = max(*mx, *col);
-        })
-        .or_insert((*col, *col));
-        mn_mx_by_col.entry(*col).and_modify(|(mn, mx)| {
-            *mn = min(*mn, *row);
-            *mx = max(*mx, *row);
-        })
-        .or_insert((*row, *row));
+        mn_by_row.entry(*row).and_modify(|val| *val = min(*val, *col)).or_insert(*col);
+        mx_by_row.entry(*row).and_modify(|val| *val = max(*val, *col)).or_insert(*col);
+        mn_by_col.entry(*col).and_modify(|val| *val = min(*val, *row)).or_insert(*row);
+        mx_by_col.entry(*col).and_modify(|val| *val = max(*val, *row)).or_insert(*row);
     }
     let p1wraparound = |cur_facing: Direction, cur_loc: Location| {
         match cur_facing {
-            RightD => (cur_facing, Location { row: cur_loc.row, col: mn_mx_by_row[&cur_loc.row].0 }),
-            DownD => (cur_facing, Location { row: mn_mx_by_col[&cur_loc.col].0, col: cur_loc.col }),
-            LeftD => (cur_facing, Location { row: cur_loc.row, col: mn_mx_by_row[&cur_loc.row].1 }),
-            UpD => (cur_facing, Location { row: mn_mx_by_col[&cur_loc.col].1, col: cur_loc.col }),
+            //Go off right edge -> wrap around by going to the leftmost column in current row
+            RightD => (cur_facing, Location { row: cur_loc.row, col: mn_by_row[&cur_loc.row] }),
+            //Go off bottom edge -> wrap around by going to the topmost row in current column
+            DownD => (cur_facing, Location { row: mn_by_col[&cur_loc.col], col: cur_loc.col }),
+            //Go off left edge -> wrap around by going to the rightmost column in current row
+            LeftD => (cur_facing, Location { row: cur_loc.row, col: mx_by_row[&cur_loc.row] }),
+            //Go off top edge -> wrap around by going to the bottommost row in current column
+            UpD => (cur_facing, Location { row: mx_by_col[&cur_loc.col], col: cur_loc.col }),
         }
     };
 
     let (p1facing, Location { row: p1row, col: p1col }) = calc_endpoint(&cur_maze, &comms, p1wraparound);
     println!("Part 1: {}", 1000*(p1row+1)+4*(p1col+1)+((p1facing as usize) as isize));
 
-    //Number of locations = 6*cube_dim^2 -> cube_dim = sqrt((number of locations)/6)
+    // -- Part 2 Code --
+    
+    //number of locations = 6*(side of cube)^2 -> side of cube = sqrt((number of locations)/6)
     let cube_dim = ((cur_maze.len()/6) as f64).sqrt() as isize;
 
-    let next_pole = |up_pole: (isize, isize, isize), right_pole: (isize, isize, isize), cur_facing| {
+    //Calculate the new orientation after we rotate the cube so that the face in the `cur_facing` direction is now on top
+    let next_orientation = |orientation: Orientation, cur_facing: Direction| -> Orientation {
+        let Orientation { up_pole, right_pole } = orientation;
         match cur_facing {
-            RightD => (right_pole, (-up_pole.0, -up_pole.1, -up_pole.2)),
-            DownD => (cross_product(right_pole, up_pole), right_pole),
-            LeftD => ((-right_pole.0, -right_pole.1, -right_pole.2), up_pole),
-            UpD => (cross_product(up_pole, right_pole), right_pole),
+            RightD => Orientation {
+                up_pole: right_pole,
+                right_pole: (-up_pole.0, -up_pole.1, -up_pole.2)
+            },
+            DownD => Orientation {
+                up_pole: cross_product(right_pole, up_pole),
+                right_pole: right_pole
+            },
+            LeftD => Orientation {
+                up_pole: (-right_pole.0, -right_pole.1, -right_pole.2),
+                right_pole: up_pole
+            },
+            UpD => Orientation {
+                up_pole: cross_product(up_pole, right_pole),
+                right_pole: right_pole
+            }
         }
     };
-    
+
+    //Leftmost location in the topmost row:
     let left_corner = cur_maze.keys().min().unwrap().clone();
-    let mut bfs_q: VecDeque<(Location, ((isize, isize, isize), (isize, isize, isize)))> = VecDeque::new();
-    let mut orient: HashMap<Location, ((isize, isize, isize), (isize, isize, isize))> = HashMap::new();
-    let mut added_to_q: HashSet<Location> = HashSet::new();
     
-    bfs_q.push_back((left_corner, ((0, 0, 1), (1, 0, 0))));
+    //Map from location of the topleft corner of every face in the net
+    //to the orientation of the cube when that face is on top,
+    //rotated so that the face looks the same way it does in the net when looking at the cube from above
+    let mut orient: HashMap<Location, Orientation> = HashMap::new();
+    //BFS queue we use to traverse all the topleft corners of the faces
+    let mut bfs_q: VecDeque<(Location, Orientation)> = VecDeque::new();
+    //Set of all topleft corners of faces we have seen so far
+    let mut added_to_q: HashSet<Location> = HashSet::new();
+
+    //Arbitrarily assign the face corresponding to left_corner the positive z-direction, with the positive x-direction being on right
+    bfs_q.push_back((left_corner, Orientation { up_pole: (0, 0, 1), right_pole: (1, 0, 0) }));
     added_to_q.insert(left_corner);
-    while let Some((cur_loc, (up_pole, right_pole))) = bfs_q.pop_front() {
-        orient.insert(cur_loc, (up_pole, right_pole));
+    while let Some((cur_loc, cur_orientation)) = bfs_q.pop_front() {
+        orient.insert(cur_loc, cur_orientation);
         for (i, (drow, dcol)) in DIR_TPLS.iter().enumerate() {
             let new_loc = Location { row: cur_loc.row+drow*cube_dim, col: cur_loc.col+dcol*cube_dim };
             if cur_maze.contains_key(&new_loc) && !added_to_q.contains(&new_loc) {
-                bfs_q.push_back((new_loc, next_pole(up_pole, right_pole, DIRS[i])));
+                bfs_q.push_back((new_loc, next_orientation(cur_orientation, DIRS[i])));
                 added_to_q.insert(new_loc);
             }
         }
     }
     
     let p2wraparound = |mut cur_facing: Direction, cur_loc: Location| {
-        let face_corner = Location { row: (cur_loc.row/cube_dim)*cube_dim, col: (cur_loc.col/cube_dim)*cube_dim };
-        let (up_pole, right_pole) = orient[&face_corner];
-        let (new_up_pole, mut cur_right_pole) = next_pole(up_pole, right_pole, cur_facing);
-        let (new_face_corner, (_, new_right_pole)) = orient.iter().find(|(_, (poss_up_pole, _))| poss_up_pole == &new_up_pole).unwrap();
-        
+        //Get the topleft corner of the face we are currently on
+        let face_corner = Location {
+            row: (cur_loc.row/cube_dim)*cube_dim,
+            col: (cur_loc.col/cube_dim)*cube_dim
+        };
+
+        //Get the current orientation of the cube
+        let cur_orientation = orient[&face_corner];
+        //Get the new orientation of the cube after rotating the cube
+        //so that the face in the direction of `cur_facing` is now on top
+        let Orientation { up_pole: new_up_pole, right_pole: mut cur_right_pole } = next_orientation(cur_orientation, cur_facing);
+
+        //new_face_corner - topleft corner of the new face we will be on
+        //new_right_pole  - direction from center of the cube to the face that should be on right
+        //                  once the cube is rotated so that the new face looks the same way it does in the net
+        //                  when the new face is on top and we are looking at the cube from above
+        let (new_face_corner, Orientation { up_pole: _, right_pole: new_right_pole }) =
+            orient.iter()
+                  .find(|(_, Orientation { up_pole: poss_up_pole, right_pole: _ })| poss_up_pole == &new_up_pole)
+                  .unwrap();
+
+        //face_loc is our current location, relative to the topleft corner of the face we are on        
         let face_loc = Location { row: cur_loc.row % cube_dim, col: cur_loc.col % cube_dim };
+        //New location relative to the topleft corner of the new face
         let mut new_face_loc = match cur_facing {
+            //Go off right edge -> wrap around by going to the leftmost column in the face
             RightD => Location { row: face_loc.row, col: 0 },
+            //Go off bottom edge -> wrap around by going to the topmost row in the face
             DownD => Location { row: 0, col: face_loc.col },
+            //Go off left edge -> wrap around by going to the rightmost column in the face
             LeftD => Location { row: face_loc.row, col: cube_dim-1 },
+            //Go off top edge -> wrap around by going to the bottommost row in the face
             UpD => Location { row: cube_dim-1, col: face_loc.col },
         };
 
+        //Keep rotating the cube clockwise (when looking from the top)
+        //until the cube is rotated so the right pole is `new_right_pole`,
+        //since that means the new face has been rotated so that it looks the same way it does in the net
         while cur_right_pole != *new_right_pole {
             cur_right_pole = cross_product(cur_right_pole, new_up_pole);
+            //Also rotate new_face_loc and the direction we are facing when we rotate the cube clockwise
             new_face_loc = Location { row: cube_dim-1-new_face_loc.col, col: new_face_loc.row };
             cur_facing = rotate_left(cur_facing);
         }
 
+        //New location is new_face_corner + new_face_loc
         let new_loc = Location { row: new_face_corner.row+new_face_loc.row, col: new_face_corner.col+new_face_loc.col };
         (cur_facing, new_loc)
     };
